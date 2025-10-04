@@ -11,6 +11,7 @@
 #include <QAction>
 
 #include "kis_types.h"
+#include "kis_material_group_layer.h"
 #include "kis_base_node.h"
 #include "kis_image.h"
 #include <kritaui_export.h>
@@ -234,6 +235,9 @@ public Q_SLOTS:
     void toggleVisibility();
     void toggleAlphaLock();
     void toggleInheritAlpha();
+
+    void slotAddMissingMaterialChannels();
+    void slotValidateMaterialGroup();
 
     /** Open a dialog to change layer's fast color overlay mask properties. */
     void colorOverlayMaskProperties(KisNodeSP node);

@@ -146,6 +146,7 @@ set(kritaui_LIB_SRCS
     kis_paintop_box.cc
     kis_paintop_option.cpp
     kis_paintop_options_model.cpp
+    widgets/KisBrushChannelMatrixWidget.cpp
     kis_paintop_settings_widget.cpp
     kis_popup_palette.cpp
     kis_png_converter.cpp

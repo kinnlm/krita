@@ -15,6 +15,7 @@
 #include <QBuffer>
 
 #include <KisDirtyStateSaver.h>
+#include <QtGlobal>
 
 #include <brushengine/kis_paintop_settings.h>
 #include "kis_paintop_registry.h"
@@ -75,6 +76,7 @@ public:
     KisPaintOpSettings::UpdateListenerSP settingsUpdateListener;
     QString version;
     QList<KoResourceLoadResult> sideLoadedResources;
+    KisBrushChannelMatrix channelMatrix;
 };
 
 
@@ -82,6 +84,7 @@ KisPaintOpPreset::KisPaintOpPreset()
     : KoResource(QString())
     , d(new Private(this))
 {
+    addMetaData(QStringLiteral("materialChannelMatrix"), d->channelMatrix.toJson().toVariantMap());
 }
 
 KisPaintOpPreset::KisPaintOpPreset(const QString & fileName)
@@ -89,6 +92,7 @@ KisPaintOpPreset::KisPaintOpPreset(const QString & fileName)
     , d(new Private(this))
 {
     setName(name().replace("_", " "));
+    addMetaData(QStringLiteral("materialChannelMatrix"), d->channelMatrix.toJson().toVariantMap());
 }
 
 KisPaintOpPreset::~KisPaintOpPreset()
@@ -163,6 +167,25 @@ KisPaintOpSettingsSP KisPaintOpPreset::settings() const
     Q_ASSERT(!d->settings->getString("paintop", QString()).isEmpty());
 
     return d->settings;
+}
+
+KisBrushChannelMatrix KisPaintOpPreset::brushChannelMatrix() const
+{
+    return d->channelMatrix;
+}
+
+void KisPaintOpPreset::setBrushChannelMatrix(const KisBrushChannelMatrix &matrix)
+{
+    const bool changed = d->channelMatrix != matrix;
+    d->channelMatrix = matrix;
+    addMetaData(QStringLiteral("materialChannelMatrix"), matrix.toJson().toVariantMap());
+
+    if (changed) {
+        setDirty(true);
+        if (d->updateProxy) {
+            d->updateProxy->notifySettingsChanged();
+        }
+    }
 }
 
 bool KisPaintOpPreset::loadFromDevice(QIODevice *dev, KisResourcesInterfaceSP resourcesInterface)
@@ -317,6 +340,8 @@ void KisPaintOpPreset::toXML(QDomDocument& doc, QDomElement& elt) const
         }
     }
 
+    elt.appendChild(d->channelMatrix.toXmlElement(doc));
+
     d->settings->toXML(doc, elt);
 }
 
@@ -351,6 +376,10 @@ void KisPaintOpPreset::fromXML(const QDomElement& presetElt, KisResourcesInterfa
     }
 
     settings->fromXML(presetElt);
+
+    if (const QDomElement matrixElement = presetElt.firstChildElement(QStringLiteral("materialChannelMatrix")); !matrixElement.isNull()) {
+        setBrushChannelMatrix(KisBrushChannelMatrix::fromXmlElement(matrixElement));
+    }
 
     // sanitize the settings
     bool hasTexture = settings->getBool("Texture/Pattern/Enabled");

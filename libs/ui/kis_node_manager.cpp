@@ -38,6 +38,7 @@
 #include <kis_image.h>
 #include <kis_painter.h>
 #include <kis_paint_layer.h>
+#include <kis_material_group_layer.h>
 #include <KisMimeDatabase.h>
 #include <KisReferenceImagesLayer.h>
 
@@ -359,9 +360,16 @@ void KisNodeManager::setup(KisKActionCollection * actionCollection, KisActionMan
     connect(action, SIGNAL(toggled(bool)), this, SLOT(slotPinToTimeline(bool)));
     m_d->pinToTimeline = action;
 
+    action = actionManager->createAction("material_group_add_missing_channel");
+    connect(action, SIGNAL(triggered()), this, SLOT(slotAddMissingMaterialChannels()));
+
+    action = actionManager->createAction("material_group_validate_channels");
+    connect(action, SIGNAL(triggered()), this, SLOT(slotValidateMaterialGroup()));
+
     NEW_LAYER_ACTION("add_new_paint_layer", "KisPaintLayer");
 
     NEW_LAYER_ACTION("add_new_group_layer", "KisGroupLayer");
+    NEW_LAYER_ACTION("add_new_material_group_layer", "KisMaterialGroupLayer");
 
     NEW_LAYER_ACTION("add_new_clone_layer", "KisCloneLayer");
 
@@ -390,6 +398,7 @@ void KisNodeManager::setup(KisKActionCollection * actionCollection, KisActionMan
             this, SLOT(createNode(QString)));
 
     CONVERT_NODE_ACTION("convert_to_paint_layer", "KisPaintLayer");
+    CONVERT_NODE_ACTION("convert_to_material_group", "KisMaterialGroupLayer");
 
     CONVERT_NODE_ACTION_2("convert_to_selection_mask", "KisSelectionMask", QStringList() << "KisSelectionMask" << "KisColorizeMask");
 
@@ -655,6 +664,8 @@ KisNodeSP  KisNodeManager::createNode(const QString & nodeType, bool quiet, KisP
         return m_d->layerManager.addPaintLayer(activeNode);
     } else if (nodeType == "KisGroupLayer") {
         return m_d->layerManager.addGroupLayer(activeNode);
+    } else if (nodeType == "KisMaterialGroupLayer") {
+        return m_d->layerManager.addMaterialGroupLayer(activeNode);
     } else if (nodeType == "KisAdjustmentLayer") {
         return m_d->layerManager.addAdjustmentLayer(activeNode);
     } else if (nodeType == "KisGeneratorLayer") {
@@ -741,6 +752,8 @@ void KisNodeManager::convertNode(const QString &nodeType)
             m_d->view->blockUntilOperationsFinishedForced(m_d->imageView->image());
             m_d->commandsAdapter.undoLastCommand();
         }
+    } else if (nodeType == "KisMaterialGroupLayer") {
+        m_d->layerManager.convertNodeToMaterialGroup(activeNode);
     } else if (nodeType == "KisFileLayer") {
         m_d->layerManager.convertLayerToFileLayer(activeNode);
     } else {
@@ -1534,6 +1547,39 @@ void KisNodeManager::toggleInheritAlpha()
         if (layer) {
             KisLayerPropertiesIcons::setNodePropertyAutoUndo(node, KisLayerPropertiesIcons::inheritAlpha, !isAlphaDisabled, m_d->view->image());
         }
+    }
+}
+
+void KisNodeManager::slotAddMissingMaterialChannels()
+{
+    KisMaterialGroupLayerSP group = qobject_cast<KisMaterialGroupLayer *>(activeNode().data());
+    if (group.isNull()) {
+        return;
+    }
+
+    group->normalizeChannelMetadata();
+    const QVector<KisMaterialGroupLayer::ChannelIndex> missing = group->missingChannels();
+    if (missing.isEmpty()) {
+        return;
+    }
+
+    m_d->commandsAdapter.beginMacro(kundo2_i18n("Add Missing Material Channels"));
+    m_d->layerManager.addMissingMaterialChannels(group, missing);
+    m_d->commandsAdapter.endMacro();
+}
+
+void KisNodeManager::slotValidateMaterialGroup()
+{
+    KisMaterialGroupLayerSP group = qobject_cast<KisMaterialGroupLayer *>(activeNode().data());
+    if (group.isNull()) {
+        return;
+    }
+
+    const QStringList issues = group->validationIssues();
+    if (issues.isEmpty()) {
+        QMessageBox::information(qApp->activeWindow(), i18nc("@title:window", "Material Channels"), i18nc("@info", "All material channels are present and valid."));
+    } else {
+        QMessageBox::warning(qApp->activeWindow(), i18nc("@title:window", "Material Channels"), issues.join(QLatin1Char('\n')));
     }
 }
 

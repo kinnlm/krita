@@ -50,6 +50,8 @@
 #include "kis_lod_transform.h"
 #include "kis_algebra_2d.h"
 #include "krita_utils.h"
+#include "brushengine/kis_painterly_pbr_router.h"
+#include "kis_material_group_layer.h"
 
 
 // Maximum distance from a Bezier control point to the line through the start
@@ -87,6 +89,7 @@ void KisPainter::init()
     d->renderingIntent = KoColorConversionTransformation::internalRenderingIntent();
     d->conversionFlags = KoColorConversionTransformation::internalConversionFlags();
     d->patternTransform = QTransform();
+    d->painterlyRouter.reset(new KisPainterlyPbrRouter(this));
 }
 
 KisPainter::~KisPainter()
@@ -2787,6 +2790,20 @@ void KisPainter::setPaintOpPreset(KisPaintOpPresetSP preset, KisNodeSP node, Kis
     else {
         warnKrita << "Could not create paintop for preset " << preset->name();
     }
+
+    if (d->painterlyRouter) {
+        KisMaterialGroupLayer *targetGroup = nullptr;
+        if (KisLayer *layer = dynamic_cast<KisLayer *>(node.data())) {
+            if (KisNodeSP parentNode = layer->parent()) {
+                targetGroup = dynamic_cast<KisMaterialGroupLayer *>(parentNode.data());
+            }
+        }
+
+        d->painterlyRouter->setTargetGroup(targetGroup);
+        if (preset) {
+            d->painterlyRouter->setChannelMatrix(preset->brushChannelMatrix());
+        }
+    }
 }
 
 KisPaintOpPresetSP KisPainter::preset() const
@@ -2797,6 +2814,11 @@ KisPaintOpPresetSP KisPainter::preset() const
 KisPaintOp* KisPainter::paintOp() const
 {
     return d->paintOp;
+}
+
+KisPainterlyPbrRouter* KisPainter::painterlyRouter() const
+{
+    return d->painterlyRouter.get();
 }
 
 void KisPainter::setMirrorInformation(const QPointF& axesCenter, bool mirrorHorizontally, bool mirrorVertically)

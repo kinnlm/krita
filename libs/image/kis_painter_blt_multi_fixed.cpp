@@ -6,6 +6,7 @@
 
 #include "kis_painter.h"
 #include "kis_painter_p.h"
+#include "brushengine/kis_painterly_pbr_router.h"
 
 #include "kis_paint_device.h"
 #include "kis_fixed_paint_device.h"
@@ -176,6 +177,10 @@ void KisPainter::bltFixed(const QRect &applyRect, const QList<KisRenderedDab> al
         Q_FOREACH (const KisRenderedDab &dab, devices) {
             d->applyDevice(rc, dab, dstIt, srcColorSpace, localParamInfo);
         }
+    }
+
+    if (d->painterlyRouter) {
+        d->painterlyRouter->applyDabs(rc, devices, this);
     }
 
 
