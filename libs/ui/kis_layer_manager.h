@@ -8,10 +8,12 @@
 
 #include <QObject>
 #include <QPointer>
+#include <QVector>
 
 #include "kis_adjustment_layer.h"
 #include "kis_generator_layer.h"
 #include "kis_types.h"
+#include "kis_material_group_layer.h"
 #include "KisView.h"
 #include <filter/kis_filter_configuration.h>
 
@@ -82,6 +84,7 @@ private Q_SLOTS:
 
     KisLayerSP addPaintLayer(KisNodeSP activeNode);
     KisNodeSP addGroupLayer(KisNodeSP activeNode);
+    KisNodeSP addMaterialGroupLayer(KisNodeSP activeNode);
 
     KisNodeSP addCloneLayer(KisNodeList nodes);
 
@@ -94,6 +97,9 @@ private Q_SLOTS:
     KisGeneratorLayerSP addGeneratorLayer(KisNodeSP activeNode, const QString &name, KisFilterConfigurationSP filter, KisSelectionSP selection, KisProcessingApplicator *applicator);
 
     KisNodeSP addFileLayer(KisNodeSP activeNode);
+
+    void convertNodeToMaterialGroup(KisNodeSP node);
+    void addMissingMaterialChannels(KisMaterialGroupLayerSP group, const QVector<KisMaterialGroupLayer::ChannelIndex> &channels);
 
     void layerStyle();
 

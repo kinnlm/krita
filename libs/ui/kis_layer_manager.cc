@@ -17,6 +17,7 @@
 #include <QStandardPaths>
 #include <QClipboard>
 #include <QMimeData>
+#include <QScopedPointer>
 
 #include <kactioncollection.h>
 #include <klocalizedstring.h>
@@ -600,6 +601,76 @@ void KisLayerManager::convertLayerToFileLayer(KisNodeSP source)
     doc->closePath(false);
 }
 
+void KisLayerManager::convertNodeToMaterialGroup(KisNodeSP node)
+{
+    KisImageWSP image = m_view->image();
+    if (!image || !node) {
+        return;
+    }
+
+    if (node->inherits("KisMaterialGroupLayer")) {
+        return;
+    }
+
+    KisGroupLayerSP group = dynamic_cast<KisGroupLayer *>(node.data());
+    if (!group) {
+        return;
+    }
+
+    KisMaterialGroupLayerSP material = new KisMaterialGroupLayer(image, group->name(), group->opacity(), group->colorSpace());
+    material->setCompositeOpId(group->compositeOpId());
+    material->setVisible(group->visible());
+    material->setUserLocked(group->userLocked());
+    material->setCollapsed(group->collapsed());
+    material->setPinnedToTimeline(group->isPinnedToTimeline());
+    material->setColorLabelIndex(group->colorLabelIndex());
+
+    KisNodeSP parent = group->parent();
+    KisNodeSP above = group;
+
+    QVector<KisNodeSP> children;
+    for (KisNodeSP child = group->firstChild(); child; child = child->nextSibling()) {
+        children.append(child);
+    }
+
+    m_commandsAdapter->beginMacro(kundo2_i18n("Convert to Material Group"));
+    m_commandsAdapter->addNode(material, parent, above);
+
+    for (KisNodeSP child : children) {
+        m_commandsAdapter->moveNode(child, material, KisNodeSP());
+    }
+
+    int channelIndex = 0;
+    for (KisNodeSP child = material->firstChild(); child && channelIndex < KisMaterialGroupLayer::ChannelCount; child = child->nextSibling(), ++channelIndex) {
+        if (KisLayerSP layer = qobject_cast<KisLayer *>(child.data())) {
+            material->tagChannelLayer(layer, static_cast<KisMaterialGroupLayer::ChannelIndex>(channelIndex));
+        }
+    }
+
+    addMissingMaterialChannels(material, material->missingChannels());
+    material->normalizeChannelMetadata();
+
+    m_commandsAdapter->removeNode(group);
+    m_commandsAdapter->endMacro();
+}
+
+void KisLayerManager::addMissingMaterialChannels(KisMaterialGroupLayerSP group, const QVector<KisMaterialGroupLayer::ChannelIndex> &channels)
+{
+    if (!group) {
+        return;
+    }
+
+    for (KisMaterialGroupLayer::ChannelIndex index : channels) {
+        QScopedPointer<KisPaintLayer> channel(group->createChannelLayerTemplate(index));
+        if (!channel) {
+            continue;
+        }
+
+        KisNodeSP above = group->insertionAboveNode(index);
+        m_commandsAdapter->addNode(KisNodeSP(channel.take()), group, above);
+    }
+}
+
 void KisLayerManager::adjustLayerPosition(KisNodeSP node, KisNodeSP activeNode, KisNodeSP &parent, KisNodeSP &above)
 {
     Q_ASSERT(activeNode);
@@ -673,6 +744,32 @@ KisNodeSP KisLayerManager::addGroupLayer(KisNodeSP activeNode)
     KisImageWSP image = m_view->image();
     KisGroupLayerSP group = new KisGroupLayer(image.data(), image->nextLayerName( i18nc("A group of layers", "Group") ), OPACITY_OPAQUE_U8);
     addLayerCommon(activeNode, group, false, 0);
+    return group;
+}
+
+KisNodeSP KisLayerManager::addMaterialGroupLayer(KisNodeSP activeNode)
+{
+    KisImageWSP image = m_view->image();
+    KisMaterialGroupLayerSP group = new KisMaterialGroupLayer(image.data(), image->nextLayerName(i18n("Material Group")), OPACITY_OPAQUE_U8, image->colorSpace());
+
+    KisNodeSP parent;
+    KisNodeSP above;
+    adjustLayerPosition(group, activeNode, parent, above);
+
+    KisGroupLayer *parentGroup = dynamic_cast<KisGroupLayer*>(parent.data());
+    if (parentGroup) {
+        group->resetCache(parentGroup->colorSpace());
+    }
+
+    QVector<KisMaterialGroupLayer::ChannelIndex> allChannels;
+    for (int i = 0; i < KisMaterialGroupLayer::ChannelCount; ++i) {
+        allChannels.append(static_cast<KisMaterialGroupLayer::ChannelIndex>(i));
+    }
+
+    m_commandsAdapter->beginMacro(kundo2_i18n("Add Material Group"));
+    m_commandsAdapter->addNode(group, parent, above);
+    addMissingMaterialChannels(group, allChannels);
+    m_commandsAdapter->endMacro();
     return group;
 }
 

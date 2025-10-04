@@ -64,6 +64,7 @@ set(kritaimage_LIB_SRCS
    brushengine/kis_paintop_settings.cpp
    brushengine/KisPaintOpPresetUpdateProxy.cpp
    brushengine/kis_paintop_utils.cpp
+   brushengine/kis_brush_channel_matrix.cpp
    brushengine/kis_no_size_paintop_settings.cpp
    brushengine/kis_locked_properties.cc
    brushengine/kis_locked_properties_proxy.cpp
@@ -77,6 +78,7 @@ set(kritaimage_LIB_SRCS
    brushengine/KisPaintopSettingsIds.cpp
    brushengine/KisOptimizedBrushOutline.cpp
    brushengine/kis_paintop_lod_limitations.cpp
+   brushengine/kis_painterly_pbr_router.cpp
    commands/kis_deselect_global_selection_command.cpp
    commands/KisDeselectActiveSelectionCommand.cpp
    commands/kis_image_change_layers_command.cpp
@@ -220,6 +222,7 @@ set(kritaimage_LIB_SRCS
    kis_update_time_monitor.cpp
    KisImageConfigNotifier.cpp
    kis_group_layer.cc
+   kis_material_group_layer.cpp
    kis_external_layer_iface.cc
    kis_count_visitor.cpp
    kis_histogram.cc

@@ -129,6 +129,7 @@ kis_add_tests(
     KisKeyframeAnimationInterfaceSignalTest.cpp
     KisOverlayPaintDeviceWrapperTest.cpp
     KisPaintOpPresetTest.cpp
+    kis_brush_channel_matrix_test.cpp
     LINK_LIBRARIES kritaimage kritatestsdk
     NAME_PREFIX "libs-image-"
     )

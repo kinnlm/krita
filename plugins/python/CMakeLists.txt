@@ -80,6 +80,7 @@ install_pykrita_plugin(mutator)
 install_pykrita_plugin(channels2layers)
 install_pykrita_plugin(photobash_images)
 install_pykrita_plugin(workflow_buttons)
+install_pykrita_plugin(painterly_pbr_exporter)
 
 # if(PYTHON_VERSION_MAJOR VERSION_EQUAL 3)
 #     install_pykrita_plugin(cmake_utils)

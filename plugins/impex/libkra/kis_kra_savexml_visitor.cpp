@@ -25,6 +25,7 @@
 #include <kis_filter_mask.h>
 #include <kis_transform_mask.h>
 #include <kis_group_layer.h>
+#include <kis_material_group_layer.h>
 #include <kis_image.h>
 #include <kis_layer.h>
 #include <kis_paint_device.h>
@@ -393,6 +394,15 @@ void KisSaveXmlVisitor::saveLayer(QDomElement & el, const QString & layerType, c
     el.setAttribute(COLLAPSED, layer->collapsed());
     el.setAttribute(COLOR_LABEL, layer->colorLabelIndex());
     el.setAttribute(VISIBLE_IN_TIMELINE, layer->isPinnedToTimeline());
+
+    if (layer->inherits("KisMaterialGroupLayer")) {
+        el.setAttribute(MATERIAL, QStringLiteral("true"));
+    }
+
+    const QString channelId = layer->nodeProperties().stringProperty(KisMaterialGroupLayer::channelPropertyKey());
+    if (!channelId.isEmpty()) {
+        el.setAttribute(MATERIAL_CHANNEL, channelId);
+    }
 
     if(layerType == SHAPE_LAYER) {
         const KisShapeLayer *shapeLayer = static_cast<const KisShapeLayer*>(layer);

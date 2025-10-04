@@ -2114,6 +2114,30 @@
       <isCheckable>true</isCheckable>
       <statusTip/>
     </Action>
+    <Action name="material_group_add_missing_channel">
+      <icon>list-add</icon>
+      <text>Add Missing Material Channels</text>
+      <whatsThis/>
+      <toolTip>Add placeholder layers for missing material channels.</toolTip>
+      <iconText>Add Missing Channels</iconText>
+      <activationFlags>1000</activationFlags>
+      <activationConditions>0</activationConditions>
+      <shortcut/>
+      <isCheckable>false</isCheckable>
+      <statusTip/>
+    </Action>
+    <Action name="material_group_validate_channels">
+      <icon>tools-check-spelling</icon>
+      <text>Validate Material Channels</text>
+      <whatsThis/>
+      <toolTip>Check material group for missing or misconfigured channels.</toolTip>
+      <iconText>Validate Material Channels</iconText>
+      <activationFlags>1000</activationFlags>
+      <activationConditions>0</activationConditions>
+      <shortcut/>
+      <isCheckable>false</isCheckable>
+      <statusTip/>
+    </Action>
     <Action name="insert_keyframe_left">
       <icon/>
       <text>Insert Keyframe Left</text>
@@ -2591,6 +2615,18 @@
       <whatsThis/>
       <toolTip>Add a new Group Layer</toolTip>
       <iconText>Group Layer</iconText>
+      <activationFlags>1000</activationFlags>
+      <activationConditions>0</activationConditions>
+      <shortcut/>
+      <isCheckable>false</isCheckable>
+      <statusTip/>
+    </Action>
+    <Action name="add_new_material_group_layer">
+      <icon>groupLayer</icon>
+      <text>Add &amp;Material Group</text>
+      <whatsThis/>
+      <toolTip>Add a new Material Group</toolTip>
+      <iconText>Material Group</iconText>
       <activationFlags>1000</activationFlags>
       <activationConditions>0</activationConditions>
       <shortcut/>
@@ -3143,6 +3179,18 @@
       <whatsThis/>
       <toolTip>to Paint Layer</toolTip>
       <iconText>to Paint Layer</iconText>
+      <activationFlags>1000</activationFlags>
+      <activationConditions>0</activationConditions>
+      <shortcut/>
+      <isCheckable>false</isCheckable>
+      <statusTip/>
+    </Action>
+    <Action name="convert_to_material_group">
+      <icon>groupLayer</icon>
+      <text>Convert to Material &amp;Group</text>
+      <whatsThis/>
+      <toolTip>Convert to Material Group</toolTip>
+      <iconText>to Material Group</iconText>
       <activationFlags>1000</activationFlags>
       <activationConditions>0</activationConditions>
       <shortcut/>

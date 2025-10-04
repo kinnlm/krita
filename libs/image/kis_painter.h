@@ -44,6 +44,7 @@ class KisPaintOp;
 class KisDistanceInformation;
 struct KisRenderedDab;
 class KisRunnableStrokeJobsInterface;
+class KisPainterlyPbrRouter;
 
 /**
  * KisPainter contains the graphics primitives necessary to draw on a
@@ -633,6 +634,8 @@ public:
      * will be deleted as soon as the KisPainter instance dies).
      */
     KisPaintOp* paintOp() const;
+
+    KisPainterlyPbrRouter* painterlyRouter() const;
 
     void setMirrorInformation(const QPointF &axesCenter, bool mirrorHorizontally, bool mirrorVertically);
 

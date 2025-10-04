@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Painterly PBR Exporter</title>
+</head>
+<body>
+<h1>Painterly PBR Exporter</h1>
+<p>The Painterly PBR exporter looks for <em>Material Groups</em> in the current document and
+writes PBR-ready texture sets for each channel stack (BaseColor, Height, Normal,
+Roughness and Metallic). Optional Occlusion layers are supported for ORM packing.</p>
+
+<h2>Using the exporter</h2>
+<ol>
+  <li>Open the document that contains one or more Material Groups.</li>
+  <li>Choose <strong>File → Export → Export PBR Set…</strong>.</li>
+  <li>Select an output folder and optional filename prefix.</li>
+  <li>Choose the desired bit depth for Height and Roughness/Metallic maps.</li>
+  <li>Enable the options that match your target renderer (Flip Green for DirectX,
+      Bake Normals, Pack ORM).</li>
+  <li>Press <strong>OK</strong> to write the textures and <code>material.yaml</code> manifest.</li>
+</ol>
+
+<h2>Outputs</h2>
+<ul>
+  <li><strong>BaseColor</strong>: 8-bit sRGB PNG.</li>
+  <li><strong>Height</strong>: 16-bit PNG or 16-bit EXR depending on your choice.</li>
+  <li><strong>Normal</strong>: 8-bit tangent-space PNG. Can be baked from Height on export.</li>
+  <li><strong>Roughness</strong> and <strong>Metallic</strong>: 8-bit or 16-bit linear PNG.</li>
+  <li><strong>ORM</strong>: Optional RGB pack (R=Occlusion, G=Roughness, B=Metallic).</li>
+</ul>
+<p>The exporter preserves the .kra document untouched; all processing happens on
+layer duplicates in temporary documents.</p>
+</body>
+</html>

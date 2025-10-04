@@ -45,6 +45,7 @@
 #include <kis_transform_mask.h>
 #include "lazybrush/kis_colorize_mask.h"
 #include <kis_group_layer.h>
+#include <kis_material_group_layer.h>
 #include <kis_image.h>
 #include <kis_layer.h>
 #include <kis_name_server.h>
@@ -852,6 +853,9 @@ KisNodeSP KisKraLoader::loadNodes(const QDomElement& element, KisImageSP image, 
                         if (node->inherits("KisLayer") && child.childNodes().count() > 0) {
                             loadNodes(child.toElement(), image, node);
                         }
+                        if (KisMaterialGroupLayer *materialGroup = dynamic_cast<KisMaterialGroupLayer *>(node.data())) {
+                            materialGroup->ensureChannelChildren();
+                        }
                     }
                 }
 
@@ -1040,6 +1044,17 @@ KisNodeSP KisKraLoader::loadNode(const QDomElement& element, KisImageSP image)
         }
     }
 
+    if (node->inherits("KisMaterialGroupLayer")) {
+        node->setProperty(KisMaterialGroupLayer::materialGroupPropertyKey().toUtf8().constData(), true);
+        node->setNodeProperty(KisMaterialGroupLayer::materialGroupPropertyKey(), true);
+    }
+
+    const QString channelId = element.attribute(MATERIAL_CHANNEL);
+    if (!channelId.isEmpty() && node->inherits("KisLayer")) {
+        node->setProperty(KisMaterialGroupLayer::channelPropertyKey().toUtf8().constData(), channelId);
+        node->setNodeProperty(KisMaterialGroupLayer::channelPropertyKey(), channelId);
+    }
+
     if (node->inherits("KisGroupLayer")) {
         if (element.hasAttribute(PASS_THROUGH_MODE)) {
             bool value = element.attribute(PASS_THROUGH_MODE, "0") != "0";
@@ -1167,14 +1182,17 @@ KisNodeSP KisKraLoader::loadFileLayer(const QDomElement& element, KisImageSP ima
 KisNodeSP KisKraLoader::loadGroupLayer(const QDomElement& element, KisImageSP image,
                                        const QString& name, const KoColorSpace* cs, quint32 opacity)
 {
-    Q_UNUSED(element);
-    KisGroupLayer* layer;
+    const bool isMaterial = element.attribute(MATERIAL, QStringLiteral("false")).toLower() == QStringLiteral("true");
 
-    layer = new KisGroupLayer(image, name, opacity, cs);
+    KisGroupLayer *layer = nullptr;
+    if (isMaterial) {
+        layer = new KisMaterialGroupLayer(image, name, opacity, cs);
+    } else {
+        layer = new KisGroupLayer(image, name, opacity, cs);
+    }
     Q_CHECK_PTR(layer);
 
     return layer;
-
 }
 
 KisNodeSP KisKraLoader::loadAdjustmentLayer(const QDomElement& element, KisImageSP image,

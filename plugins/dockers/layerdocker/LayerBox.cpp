@@ -47,6 +47,7 @@
 #include <kis_paint_device.h>
 #include <kis_layer.h>
 #include <kis_group_layer.h>
+#include <kis_material_group_layer.h>
 #include <kis_mask.h>
 #include <kis_node.h>
 #include <kis_base_node.h>
@@ -1262,6 +1263,14 @@ void LayerBox::updateLayerOpMenu(const QModelIndex &index, QMenu &menu) {
             addActionToMenu(convertToMenu, "convert_to_file_layer");
             addActionToMenu(convertToMenu, "convert_group_to_animated");
             addActionToMenu(convertToMenu, "layercolorspaceconversion");
+
+            QMenu *materialMenu = menu.addMenu(i18n("Material"));
+            if (qobject_cast<KisMaterialGroupLayer *>(activeNode.data())) {
+                addActionToMenu(materialMenu, "material_group_add_missing_channel");
+                addActionToMenu(materialMenu, "material_group_validate_channels");
+            } else if (qobject_cast<KisGroupLayer *>(activeNode.data())) {
+                addActionToMenu(materialMenu, "convert_to_material_group");
+            }
 
             QMenu *splitAlphaMenu = menu.addMenu(i18n("S&plit Alpha"));
             addActionToMenu(splitAlphaMenu, "split_alpha_into_mask");

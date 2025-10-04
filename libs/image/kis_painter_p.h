@@ -11,12 +11,15 @@
 #include <KoColor.h>
 #include <KoCompositeOpRegistry.h>
 #include <KoUpdater.h>
+#include <memory>
 #include "kis_paintop.h"
 #include "kis_selection.h"
 #include "kis_fill_painter.h"
 #include "kis_painter.h"
 #include "kis_paintop_preset.h"
 #include <KisFakeRunnableStrokeJobsExecutor.h>
+
+class KisPainterlyPbrRouter;
 
 struct Q_DECL_HIDDEN KisPainter::Private {
     Private(KisPainter *_q) : q(_q) {}
@@ -66,6 +69,7 @@ struct Q_DECL_HIDDEN KisPainter::Private {
     KisRunnableStrokeJobsInterface *runnableStrokeJobsInterface {nullptr};
     QScopedPointer<KisRunnableStrokeJobsInterface> fakeRunnableStrokeJobsInterface;
     QTransform                  patternTransform;
+    std::unique_ptr<KisPainterlyPbrRouter> painterlyRouter;
 
     const KoCompositeOp*        compositeOp(const KoColorSpace *srcCS);
 

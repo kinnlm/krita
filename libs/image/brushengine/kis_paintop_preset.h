@@ -16,6 +16,7 @@
 #include "kritaimage_export.h"
 #include <brushengine/kis_uniform_paintop_property.h>
 #include <KisPaintOpPresetUpdateProxy.h>
+#include "kis_brush_channel_matrix.h"
 
 class KoCanvasResourcesInterface;
 using KoCanvasResourcesInterfaceSP = QSharedPointer<KoCanvasResourcesInterface>;
@@ -136,6 +137,10 @@ public:
 
     /// return the settings that define this paintop preset
     KisPaintOpSettingsSP settings() const;
+
+    /// Accessor for the brush material channel routing metadata.
+    KisBrushChannelMatrix brushChannelMatrix() const;
+    void setBrushChannelMatrix(const KisBrushChannelMatrix &matrix);
 
     bool loadFromDevice(QIODevice *dev, KisResourcesInterfaceSP resourcesInterface) override;
 

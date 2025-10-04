@@ -200,6 +200,7 @@ xsi:schemaLocation="http://www.kde.org/standards/kxmlgui/1.0  http://www.kde.org
         <text context="New layer">&amp;New</text>
         <Action name="add_new_paint_layer"/>
         <Action name="add_new_group_layer"/>
+        <Action name="add_new_material_group_layer"/>
         <Action name="add_new_clone_layer"/>
         <Action name="add_new_shape_layer"/>
         <Action name="add_new_adjustment_layer"/>
@@ -236,6 +237,7 @@ xsi:schemaLocation="http://www.kde.org/standards/kxmlgui/1.0  http://www.kde.org
       <Menu name="LayerConvert">
         <text>&amp;Convert</text>
         <Action name="convert_to_paint_layer"/>
+        <Action name="convert_to_material_group"/>
         <Action name="convert_to_transparency_mask"/>
         <Action name="convert_to_filter_mask"/>
         <Action name="convert_to_selection_mask"/>
