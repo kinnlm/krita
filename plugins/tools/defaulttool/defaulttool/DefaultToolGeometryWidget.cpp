@@ -34,7 +34,11 @@
 #include <QCheckBox>
 #include <QDoubleSpinBox>
 #include <QList>
+#include <QtMath>
 #include <kis_algebra_2d.h>
+#include <kundo2_i18n.h>
+
+#include <cmath>
 
 #include "kis_aspect_ratio_locker.h"
 #include "kis_debug.h"
@@ -54,6 +58,9 @@ DefaultToolGeometryWidget::DefaultToolGeometryWidget(KoInteractionTool *tool, QW
 
     setUnit(KoUnit(KoUnit::Point));
 
+    rotationSpinBox->setDecimals(2);
+    rotationSpinBox->setKeyboardTracking(false);
+
     // Connect and initialize automated aspect locker
     m_sizeAspectLocker->connectSpinBoxes(widthSpinBox, heightSpinBox, aspectButton);
     aspectButton->setKeepAspectRatio(false);
@@ -68,9 +75,11 @@ DefaultToolGeometryWidget::DefaultToolGeometryWidget(KoInteractionTool *tool, QW
     connect(selectedShapesProxy, SIGNAL(selectionChanged()), this, SLOT(slotUpdateCheckboxes()));
     connect(selectedShapesProxy, SIGNAL(selectionChanged()), this, SLOT(slotUpdatePositionBoxes()));
     connect(selectedShapesProxy, SIGNAL(selectionChanged()), this, SLOT(slotUpdateOpacitySlider()));
+    connect(selectedShapesProxy, SIGNAL(selectionChanged()), this, SLOT(slotUpdateRotationBox()));
 
     connect(selectedShapesProxy, SIGNAL(selectionContentChanged()), this, SLOT(slotUpdatePositionBoxes()));
     connect(selectedShapesProxy, SIGNAL(selectionContentChanged()), this, SLOT(slotUpdateOpacitySlider()));
+    connect(selectedShapesProxy, SIGNAL(selectionContentChanged()), this, SLOT(slotUpdateRotationBox()));
 
     connect(chkGlobalCoordinates, SIGNAL(toggled(bool)), SLOT(slotUpdateSizeBoxes()));
     connect(chkGlobalCoordinates, SIGNAL(toggled(bool)), SLOT(slotUpdateAspectButton()));
@@ -125,8 +134,11 @@ DefaultToolGeometryWidget::DefaultToolGeometryWidget(KoInteractionTool *tool, QW
 
     connect(dblOpacity, SIGNAL(valueChanged(qreal)), SLOT(slotOpacitySliderChanged(qreal)));
 
+    connect(rotationSpinBox, SIGNAL(valueChanged(double)), SLOT(slotRotateShapes()));
+
     // cold init
     slotUpdateOpacitySlider();
+    slotUpdateRotationBox();
 }
 
 DefaultToolGeometryWidget::~DefaultToolGeometryWidget()
@@ -181,6 +193,46 @@ QRectF calculateSelectionBounds(KoSelection *selection,
     }
 
     return QRectF(resultPoint, resultRect.size());
+}
+
+qreal wrapAngle360(qreal angle)
+{
+    qreal result = std::fmod(angle, 360.0);
+
+    if (result < 0.0) {
+        result += 360.0;
+    }
+
+    if (result >= 360.0) {
+        result -= 360.0;
+    }
+
+    return result;
+}
+
+qreal wrapAngleDisplay(qreal angle)
+{
+    qreal result = wrapAngle360(angle);
+
+    if (result > 180.0) {
+        result -= 360.0;
+    }
+
+    return result;
+}
+
+qreal calculateSelectionRotation(KoSelection *selection)
+{
+    const QPointF topLeft = selection->absolutePosition(KoFlake::TopLeft);
+    const QPointF topRight = selection->absolutePosition(KoFlake::TopRight);
+    const QPointF direction = topRight - topLeft;
+
+    if (KisAlgebra2D::norm(direction) < 1e-6) {
+        return 0.0;
+    }
+
+    const qreal angle = qRadiansToDegrees(std::atan2(direction.y(), direction.x()));
+    return wrapAngle360(angle);
 }
 
 }
@@ -366,6 +418,84 @@ void DefaultToolGeometryWidget::slotUpdatePaintOrder() {
     }
 }
 
+void DefaultToolGeometryWidget::slotUpdateRotationBox()
+{
+    if (!isVisible()) return;
+
+    KoSelection *selection = m_tool->canvas()->selectedShapesProxy()->selection();
+    const bool hasSelection = selection && selection->count() > 0;
+
+    const bool hasEditableShapes = hasSelection && !selection->selectedEditableShapes().isEmpty();
+    rotationSpinBox->setEnabled(hasEditableShapes);
+
+    if (!hasSelection) {
+        KisSignalsBlocker blocker(rotationSpinBox);
+        rotationSpinBox->setValue(0.0);
+        return;
+    }
+
+    const qreal angle = wrapAngleDisplay(calculateSelectionRotation(selection));
+
+    KisSignalsBlocker blocker(rotationSpinBox);
+    rotationSpinBox->setValue(angle);
+}
+
+void DefaultToolGeometryWidget::slotRotateShapes()
+{
+    static const qreal eps = 1e-4;
+
+    KoSelection *selection = m_tool->canvas()->selectedShapesProxy()->selection();
+    if (!selection || selection->count() == 0) {
+        return;
+    }
+
+    QList<KoShape*> editableShapes = selection->selectedEditableShapes();
+    if (editableShapes.isEmpty()) {
+        return;
+    }
+
+    const qreal currentAngle = calculateSelectionRotation(selection);
+    const qreal targetAngle = wrapAngle360(rotationSpinBox->value());
+
+    qreal delta = targetAngle - currentAngle;
+
+    if (delta > 180.0) {
+        delta -= 360.0;
+    } else if (delta < -180.0) {
+        delta += 360.0;
+    }
+
+    if (qAbs(delta) < eps) {
+        return;
+    }
+
+    QTransform applyTransform;
+    applyTransform.rotate(delta);
+
+    QList<KoShape*> transformedShapes = editableShapes;
+    transformedShapes << selection;
+
+    QList<QTransform> oldTransforms;
+    QList<QTransform> newTransforms;
+
+    const KoFlake::AnchorPosition anchor = positionSelector->value();
+    const QPointF anchorPoint = selection->absolutePosition(anchor);
+    const QTransform centerTrans = QTransform::fromTranslate(anchorPoint.x(), anchorPoint.y());
+    const QTransform centerTransInv = QTransform::fromTranslate(-anchorPoint.x(), -anchorPoint.y());
+
+    Q_FOREACH (KoShape *shape, transformedShapes) {
+        oldTransforms.append(shape->transformation());
+
+        const QTransform world = shape->absoluteTransformation();
+        const QTransform t = world * centerTransInv * applyTransform * centerTrans * world.inverted() * shape->transformation();
+        newTransforms.append(t);
+    }
+
+    KoShapeTransformCommand *cmd = new KoShapeTransformCommand(transformedShapes, oldTransforms, newTransforms);
+    cmd->setText(kundo2_i18n("Rotate Shapes"));
+    m_tool->canvas()->addCommand(cmd);
+}
+
 void DefaultToolGeometryWidget::slotUpdateSizeBoxes(bool updateAspect)
 {
     if (!isVisible()) return;
@@ -512,6 +642,7 @@ void DefaultToolGeometryWidget::setUnit(const KoUnit &unit)
 
     slotUpdatePositionBoxes();
     slotUpdateSizeBoxes();
+    slotUpdateRotationBox();
 }
 
 bool DefaultToolGeometryWidget::useUniformScaling() const
@@ -530,6 +661,7 @@ void DefaultToolGeometryWidget::showEvent(QShowEvent *event)
     slotUpdateCheckboxes();
     slotAnchorPointChanged();
     slotUpdatePaintOrder();
+    slotUpdateRotationBox();
 }
 
 void DefaultToolGeometryWidget::resourceChanged(int key, const QVariant &res)
