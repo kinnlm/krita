@@ -171,6 +171,7 @@ set(kritaui_LIB_SRCS
     KisIdleTaskStrokeStrategy.cpp
     KisImageThumbnailStrokeStrategy.cpp
     KisTextPropertiesManager.cpp
+    KisLongPressEventFilter.cpp
 
     opengl/kis_opengl.cpp
     opengl/kis_opengl_canvas2.cpp
@@ -544,6 +545,10 @@ if(APPLE)
         input/kis_extended_modifiers_mapper_osx.mm
         osx.mm
     )
+endif()
+
+if(ANDROID)
+    list(APPEND kritaui_LIB_SRCS KisAndroidDonations.cpp)
 endif()
 
 ki18n_wrap_ui(kritaui_LIB_SRCS

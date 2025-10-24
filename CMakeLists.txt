@@ -77,6 +77,11 @@ if (POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
 
+# in CMake >=3.30; BoostConfig.cmake is shipped only by Boost >=1.82
+if (POLICY CMP0167)
+    cmake_policy(SET CMP0167 OLD)
+endif()
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if (APPLE)
@@ -543,12 +548,33 @@ if (QT_MAJOR_VERSION STREQUAL "6")
         REQUIRED COMPONENTS
         ColorScheme
     )
+
+    # Qt 6.10 has split this into it's own CMake module, it's no longer included with Gui
+    if (Qt6Gui_VERSION VERSION_GREATER_EQUAL "6.10.0")
+        find_package(Qt6GuiPrivate ${REQUIRED_QT_VERSION} REQUIRED NO_MODULE)
+        get_target_property(Qt6Gui_PRIVATE_INCLUDE_DIRS Qt6::GuiPrivate INTERFACE_INCLUDE_DIRECTORIES)
+
+        # QtGui depends on private headers form QtCore as well
+        find_package(Qt6CorePrivate ${REQUIRED_QT_VERSION} REQUIRED NO_MODULE)
+        get_target_property(Qt6Core_PRIVATE_INCLUDE_DIRS Qt6::CorePrivate INTERFACE_INCLUDE_DIRECTORIES)
+
+        # Currently we depend on the Qt6Gui_PRIVATE_INCLUDE_DIRS variable to selectively include
+        # the needed headers, but it will fail to compile in 6.10 since the private headers exist
+        # in separate directories. So we'll just shove them into the variable we expect for now.
+        list(APPEND Qt6Gui_PRIVATE_INCLUDE_DIRS ${Qt6Core_PRIVATE_INCLUDE_DIRS})
+    endif()
 endif()
 
 set(HAVE_WAYLAND FALSE)
 if (TARGET Qt::WaylandClient)
     message(STATUS "Found Qt::WaylandClient, enabling kritawayland platform")
     set(HAVE_WAYLAND TRUE)
+
+    # Qt 6.10 has split the private module, see above for a better explanation
+    if (Qt6Gui_VERSION VERSION_GREATER_EQUAL "6.10.0")
+        find_package(Qt6WaylandClientPrivate ${REQUIRED_QT_VERSION} REQUIRED NO_MODULE)
+        get_target_property(Qt6WaylandClient_PRIVATE_INCLUDE_DIRS Qt6::WaylandClientPrivate INTERFACE_INCLUDE_DIRECTORIES)
+    endif()
 endif()
 
 option(KRITA_USE_SURFACE_COLOR_MANAGEMENT_API "Use per-surface color management API (e.g. when using Wayland)" ${HAVE_WAYLAND})
@@ -783,7 +809,7 @@ if (NOT WIN32 AND NOT APPLE AND NOT ANDROID AND NOT HAIKU)
     macro_bool_to_01(KF5Crash_FOUND HAVE_KCRASH)
     set_package_properties(KF${KF_MAJOR}Crash PROPERTIES
         DESCRIPTION "KDE's Crash Handler"
-        URL "https://api.kde.org/frameworks-api/frameworks5-apidocs/kcrash/html/index.html"
+        URL "https://api.kde.org/kcrash-index.html"
         TYPE OPTIONAL
         PURPOSE "Optionally used to provide crash reporting on Linux")
 
@@ -1022,7 +1048,7 @@ if (MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(Boost_COMPILER "mgw${KRITA_boost_COMPILER_VERSION}")
 endif()
 
-find_package(Boost 1.65 REQUIRED COMPONENTS system)
+find_package(Boost 1.69 REQUIRED)
 set_package_properties(Boost PROPERTIES
     DESCRIPTION "Boost provides free peer-reviewed portable C++ source libraries."
     URL "https://www.boost.org"
@@ -1195,7 +1221,7 @@ macro_bool_to_01(Python_Development_FOUND HAVE_PYTHONLIBS)
 find_package(SIP "4.19.13")
 set_package_properties(SIP PROPERTIES
     DESCRIPTION "Support for generating SIP Python bindings"
-    URL "https://www.riverbankcomputing.com/software/sip/download"
+    URL "https://github.com/Python-SIP/sip"
     TYPE OPTIONAL
     PURPOSE "Required by the Krita PyQt plugin")
 macro_bool_to_01(SIP_FOUND HAVE_SIP)
@@ -1393,7 +1419,7 @@ if (QT_MAJOR_VERSION STREQUAL "6")
     find_package(KDcrawQt6 5.0.0)
     set_package_properties(KDcrawQt6 PROPERTIES
         DESCRIPTION "A thread-safe wrapper around libraw"
-        URL "https://api.kde.org/libkdcraw/html/index.html"
+        URL "https://invent.kde.org/graphics/libkdcraw"
         TYPE OPTIONAL
         PURPOSE "Needed for reading RAW files"
     )
@@ -1401,7 +1427,7 @@ else()
     find_package(KF5KDcraw 5.0.0)
     set_package_properties(KF5KDcraw PROPERTIES
         DESCRIPTION "A thread-safe wrapper around libraw"
-        URL "https://api.kde.org/libkdcraw/html/index.html"
+        URL "https://invent.kde.org/graphics/libkdcraw"
         TYPE OPTIONAL
         PURPOSE "Needed for reading RAW files"
     )

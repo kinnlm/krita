@@ -84,6 +84,47 @@ private:
     QPointF initialTextPosition = QPointF();
 };
 
+struct KoSvgTextNodeIndex::Private {
+    Private(KisForest<KoSvgTextContentElement>::child_iterator _textElement)
+        :textElement(_textElement) {}
+    KisForest<KoSvgTextContentElement>::child_iterator textElement;
+};
+
+// for the use in KoSvgTextShape::Private::createTextNodeIndex() only
+KoSvgTextNodeIndex::KoSvgTextNodeIndex()
+    : d() // Private is **not** initialized, to be intialized by the factory method
+{
+}
+
+KoSvgTextNodeIndex KoSvgTextShape::Private::createTextNodeIndex(KisForest<KoSvgTextContentElement>::child_iterator textElement)
+{
+    KoSvgTextNodeIndex index;
+    index.d.reset(new KoSvgTextNodeIndex::Private(textElement));
+    return index;
+}
+
+KoSvgTextNodeIndex::KoSvgTextNodeIndex(const KoSvgTextNodeIndex &rhs)
+{
+    d->textElement = rhs.d->textElement;
+}
+
+KoSvgTextNodeIndex::~KoSvgTextNodeIndex() {
+
+}
+
+KoSvgTextProperties *KoSvgTextNodeIndex::properties(){
+    return &d->textElement->properties;
+}
+
+KoSvgText::TextOnPathInfo *KoSvgTextNodeIndex::textPathInfo() {
+    return &d->textElement->textPathInfo;
+}
+
+KoShape *KoSvgTextNodeIndex::textPath() {
+    // TODO: implement this properly in the text-in-shape branch.
+    return nullptr;
+}
+
 
 KoSvgTextShape::KoSvgTextShape()
     : KoShape()
@@ -1058,114 +1099,43 @@ void KoSvgTextShape::cleanUp()
     shapeChangedPriv(ContentChanged);
 }
 
-QVector<int> findTreeIndexForPropertyIdImpl(KisForest<KoSvgTextContentElement>::child_iterator parent, KoSvgTextProperties::PropertyId propertyId) {
-    int count = 0;
+KisForest<KoSvgTextContentElement>::child_iterator findNodeIndexForPropertyIdImpl(KisForest<KoSvgTextContentElement>::child_iterator parent, KoSvgTextProperties::PropertyId propertyId) {
     for (auto child = KisForestDetail::childBegin(parent); child != KisForestDetail::childEnd(parent); child++) {
         if (child->properties.hasProperty(propertyId)) {
-            return QVector<int>({count});
+            return child;
         } else if (KisForestDetail::childBegin(child) != KisForestDetail::childEnd(child)) {
-            QVector<int> current = QVector<int>({count});
-            QVector<int> childIndex = findTreeIndexForPropertyIdImpl(child, propertyId);
-            if (!childIndex.isEmpty()) {
-                current.append(childIndex);
-                return current;
+            auto found = findNodeIndexForPropertyIdImpl(child, propertyId);
+            if (found != child) {
+                return found;
             }
         }
-        count += 1;
     }
-    return QVector<int>();
+    return parent;
 }
 
-QVector<int> KoSvgTextShape::findTreeIndexForPropertyId(KoSvgTextProperties::PropertyId propertyId)
+KoSvgTextNodeIndex KoSvgTextShape::findNodeIndexForPropertyId(KoSvgTextProperties::PropertyId propertyId)
 {
-    QVector<int> treeIndex;
-
     for (auto it = d->textData.childBegin(); it != d->textData.childEnd(); it++) {
         if (it->properties.hasProperty(propertyId)) {
-            return QVector<int>({0});
-        } else {
-            treeIndex = findTreeIndexForPropertyIdImpl(it, propertyId);
-            if (!treeIndex.isEmpty()) {
-                treeIndex.insert(0, 0);
+            return Private::createTextNodeIndex(it);
+        } else if (KisForestDetail::childBegin(it) != KisForestDetail::childEnd(it)) {
+            auto found = findNodeIndexForPropertyIdImpl(it, propertyId);
+            if (found != it) {
+                return Private::createTextNodeIndex(found);
             }
         }
     }
-
-    return treeIndex;
+    return Private::createTextNodeIndex(d->textData.childBegin());
 }
 
-KoSvgTextProperties KoSvgTextShape::propertiesForTreeIndex(const QVector<int> &treeIndex) const
+QPair<int, int> KoSvgTextShape::findRangeForNodeIndex(const KoSvgTextNodeIndex &node) const
 {
-    if (treeIndex.isEmpty()) return KoSvgTextProperties();
-    QVector<int> idx = treeIndex;
-    idx.removeFirst();
-    for (auto it = d->textData.childBegin(); it != d->textData.childEnd(); it++) {
-        if (idx.isEmpty()) {
-            if (it != d->textData.childEnd()) {
-                return it->properties;
-            } else {
-                return KoSvgTextProperties();
-            }
-        }
-        auto child = d->iteratorForTreeIndex(idx, it);
-        if (child != d->textData.childEnd()) {
-            return child->properties;
-        }
-    }
-    return KoSvgTextProperties();
-}
-
-bool KoSvgTextShape::setPropertiesAtTreeIndex(const QVector<int> treeIndex, const KoSvgTextProperties props)
-{
-    QVector<int> idx = treeIndex;
-    bool success = false;
-    if (treeIndex.isEmpty()) return success;
-    idx.removeFirst();
-    for (auto it = d->textData.childBegin(); it != d->textData.childEnd(); it++) {
-        if (idx.isEmpty()) {
-            if (it != d->textData.childEnd()) {
-                it->properties = props;
-                success = true;
-                break;
-            } else {
-                success = false;
-                break;
-            }
-        }
-        auto child = d->iteratorForTreeIndex(idx, it);
-        if (child != d->textData.childEnd()) {
-            child->properties = props;
-            success = true;
-            break;
-        }
-    }
-    if (success) {
-        notifyChanged();
-        shapeChangedPriv(ContentChanged);
-    }
-    return success;
-}
-
-QPair<int, int> KoSvgTextShape::findRangeForTreeIndex(const QVector<int> treeIndex) const
-{
-    QVector<int> idx = treeIndex;
-    if (idx.isEmpty()) {
-        return qMakePair(-1, -1);
-    }
-    if (idx.size() == 1) {
-        return qMakePair(0, d->cursorPos.size());
-    }
-    idx.removeFirst();
-
     int startIndex = 0;
     int endIndex = 0;
-    for (auto it = d->textData.childBegin(); it != d->textData.childEnd(); it++) {
-        auto child = d->iteratorForTreeIndex(idx, it);
-        if (child != d->textData.childEnd()) {
-            // count children
-            d->startIndexOfIterator(d->textData.childBegin(), child, startIndex);
-            endIndex = d->numChars(child) + startIndex;
-        }
+    for (auto child = d->textData.childBegin(); child != d->textData.childEnd(); child++) {
+        // count children
+        d->startIndexOfIterator(child, node.d->textElement, startIndex);
+        endIndex = d->numChars(node.d->textElement) + startIndex;
     }
     return qMakePair(posForIndex(startIndex), posForIndex(endIndex));
 }

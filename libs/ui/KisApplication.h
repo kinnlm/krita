@@ -18,6 +18,7 @@ class QWidget;
 class KisApplicationArguments;
 class KisAutoSaveRecoveryDialog;
 class KisExtendedModifiersMapperPluginInterface;
+class KisAndroidDonations;
 
 #include <KisImportExportManager.h>
 
@@ -95,12 +96,19 @@ public:
 
     KisExtendedModifiersMapperPluginInterface* extendedModifiersPluginInterface();
 
+#ifdef Q_OS_ANDROID
+    KisAndroidDonations *androidDonations();
+#endif
+
 public Q_SLOTS:
 
     void executeRemoteArguments(QByteArray message, KisMainWindow *mainWindow);
     void remoteArguments(const QString &message);
     void fileOpenRequested(const QString & url);
     void setSplashScreenLoadingText(const QString&);
+
+private Q_SLOTS:
+    void slotSetLongPress(bool enabled);
 
 private:
     /// @return the number of autosavefiles opened

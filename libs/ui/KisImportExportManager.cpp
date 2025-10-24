@@ -565,7 +565,7 @@ bool KisImportExportManager::askUserAboutExportConfiguration(
     if (m_document->referenceImagesLayer() && m_document->referenceImagesLayer()->shapeCount() > 0 && to != m_document->nativeFormatMimeType()) {
         warnings.append(i18nc("image conversion warning", "The image contains <b>reference images</b>. The reference images will not be saved."));
     }
-    if (m_document->guidesConfig().hasGuides() && to != m_document->nativeFormatMimeType()) {
+    if (m_document->guidesConfig().hasGuides() && !filter->exportSupportsGuides()) {
         warnings.append(i18nc("image conversion warning", "The image contains <b>guides</b>. The guides will not be saved."));
     }
     if (!m_document->gridConfig().isDefault() && to != m_document->nativeFormatMimeType()) {
@@ -802,7 +802,17 @@ KisImportExportErrorCode KisImportExportManager::doExportImpl(const QString &loc
     QTemporaryFile file(QDir::tempPath() + "/.XXXXXX.kra");
     if (filter->supportsIO() && !file.open()) {
 #endif
-        KisImportExportErrorCannotWrite result(file.error());
+        QFileDevice::FileError error = file.error();
+        if (file.error() == QFileDevice::NoError) {
+            /**
+             * On Android Qt's AndroidContentFileEngine::open may be not very
+             * accurate with setting a proper error code when requesting file
+             * descriptor from JNI and getting a refusal. We should handle this
+             * condition gracefully.
+             */
+            error = QFileDevice::OpenError;
+        }
+        KisImportExportErrorCannotWrite result(error);
 #ifdef USE_QSAVEFILE
         file.cancelWriting();
 #endif
